@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.v4.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/fragment_detalle"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#ffffff"
+    tools:context=".MainActivity" >
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <TextView
+            android:id="@+id/titulo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentTop="true"
+            android:gravity="center"
+            android:text="Título"
+            android:textAlignment="center"
+            android:textColor="@android:color/black"
+            android:textAppearance="?android:attr/textAppearanceLarge" />
+        <TextView
+            android:id="@+id/autor"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentRight="true"
+            android:layout_below="@+id/titulo"
+            android:gravity="center"
+            android:text="Autor"
+            android:textAlignment="center"
+            android:textColor="@android:color/darker_gray"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+        <com.android.volley.toolbox.NetworkImageView
+            android:id="@+id/portada"
+            android:layout_width="220dp"
+            android:layout_height="220dp"
+            android:layout_below="@id/autor"
+            android:layout_centerHorizontal="true"
+            android:scaleType="fitCenter" />
+    </RelativeLayout>
+
+        <course.android.audiolibros_v1.components.ZoomSeekBar
+            android:layout_width="match_parent"
+            android:padding="10dp"
+            android:id="@+id/zoomSeekBar"
+            android:layout_height="120dp"
+            android:visibility="gone"
+            app:valMax="300"
+            app:valMin="0"
+            app:val="0"
+            app:escalaMin="10"
+            app:escalaMax="150"
+            app:escalaRaya="10"
+            app:escalaRayaLarga="5" />
+    </LinearLayout>
+</android.support.v4.widget.NestedScrollView>
