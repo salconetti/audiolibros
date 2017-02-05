@@ -8,7 +8,6 @@ import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.media.MediaPlayer;
@@ -16,7 +15,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.NotificationCompat;
-import android.support.v7.preference.PreferenceManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -36,9 +34,17 @@ import course.android.audiolibros_v1.Libro;
 import course.android.audiolibros_v1.MainActivity;
 import course.android.audiolibros_v1.R;
 import course.android.audiolibros_v1.VolleySingleton;
-import course.android.audiolibros_v1.adaptadores.LibrosSingleton;
 import course.android.audiolibros_v1.components.OnSeekBarListener;
 import course.android.audiolibros_v1.components.ZoomSeekBar;
+import course.android.audiolibros_v1.infraestructure.storages.LibroSharedPreferencesStorage;
+import course.android.audiolibros_v1.infraestructure.storages.LibroStorage;
+import course.android.audiolibros_v1.infraestructure.storages.UserConfigSharedPreferencesStorage;
+import course.android.audiolibros_v1.infraestructure.storages.UserConfigStorage;
+import course.android.audiolibros_v1.infraestructure.repositories.BooksRepository;
+import course.android.audiolibros_v1.infraestructure.repositories.UserConfigRepository;
+import course.android.audiolibros_v1.presenters.DetallePresenter;
+import course.android.audiolibros_v1.useCases.GetBookById;
+import course.android.audiolibros_v1.useCases.IsAutoplaySelected;
 import course.android.audiolibros_v1.widget.WidgetProvider;
 
 /**
@@ -49,8 +55,9 @@ public class DetalleFragment extends Fragment
         implements View.OnTouchListener,
         MediaPlayer.OnPreparedListener,
         MediaController.MediaPlayerControl,
-        OnSeekBarListener {
-    public static String ARG_ID_LIBRO = "id_libro";
+        OnSeekBarListener,
+        DetallePresenter.DetailView{
+
     MediaPlayer mediaPlayer;
     MediaController mediaController;
     Libro libro;
@@ -67,24 +74,33 @@ public class DetalleFragment extends Fragment
 
     private boolean isMediaPlayerReleased = false;
 
+    private DetallePresenter detallePresenter;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         changeSeek();
+
     }
 
     @Override public View onCreateView(LayoutInflater inflador, ViewGroup
             contenedor, Bundle savedInstanceState) {
         View vista = inflador.inflate(R.layout.fragment_detalle,
                 contenedor, false);
+        Context context = getActivity().getApplicationContext();
+
+        LibroStorage libroStorage = LibroSharedPreferencesStorage.getInstance(context);
+        BooksRepository booksRepository = BooksRepository.create(libroStorage);
+        GetBookById getBookById = GetBookById.create(booksRepository);
+
+        UserConfigStorage userConfigStorage = UserConfigSharedPreferencesStorage.getInstance(context);
+        UserConfigRepository userConfigRepository = UserConfigRepository.create(userConfigStorage);
+        IsAutoplaySelected isAutoplaySelected = IsAutoplaySelected.create(userConfigRepository);
+
+        detallePresenter = DetallePresenter.create(getBookById, isAutoplaySelected,this);
+
         Bundle args = getArguments();
-        if (args != null) {
-            int position = args.getInt(ARG_ID_LIBRO);
-            ponInfoLibro(position, vista);
-        } else {
-            ponInfoLibro(0, vista);
-        }
-        this.zoomSeekBar = (ZoomSeekBar) contenedor.findViewById(R.id.zoomSeekBar);
+        detallePresenter.setBook(args, vista);
         return vista;
     }
 
@@ -107,30 +123,25 @@ public class DetalleFragment extends Fragment
     @Override
     public void onDestroy() {
         try {
-            mediaPlayer.pause();
-            mediaPlayer.release();
-            isMediaPlayerReleased = true;
-
-            clearNotification();
-            clearWidget();
+            detallePresenter.exit();
         } catch (Exception e) {
             Log.d("Audiolibros", "Error en mediaPlayer.stop()");
         }
         super.onDestroy();
     }
 
-    private void ponInfoLibro(int id, View vista) {
-
-        this.libro = LibrosSingleton.getInstance().getBooks().get(id);
+    private void ponInfoLibro(Libro libro, View vista) {
 
         ((TextView) vista.findViewById(R.id.titulo)).setText(libro.titulo);
         ((TextView) vista.findViewById(R.id.autor)).setText(libro.autor);
         ((NetworkImageView) vista.findViewById(R.id.portada)).setImageUrl(
                 libro.urlImagen, VolleySingleton.getInstance(getActivity().getApplicationContext()).getLectorImagenes());
         vista.setOnTouchListener(this);
+
         if (mediaPlayer != null) {
             mediaPlayer.release();
         }
+
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setOnPreparedListener(this);
         mediaController = new MediaController(getActivity());
@@ -143,20 +154,13 @@ public class DetalleFragment extends Fragment
         }
     }
     public void ponInfoLibro(int id) {
-        ponInfoLibro(id, getView());
+        detallePresenter.setBook(id, getView());
     }
 
     @Override public void onPrepared(MediaPlayer mediaPlayer) {
         Log.d("Audiolibros", "Entramos en onPrepared de MediaPlayer");
 
         setZoomSeekBar(mediaPlayer);
-
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        Boolean autoPlay = sharedPref.getBoolean("pref_autoreproducir", true);
-
-        if (autoPlay) {
-            mediaPlayer.start();
-        }
 
         mediaController.setMediaPlayer(this);
         mediaController.setAnchorView(getView().findViewById(
@@ -165,10 +169,7 @@ public class DetalleFragment extends Fragment
         mediaController.setPadding(0,0,0,110);
         mediaController.show();
 
-        updateWidget(libro);
-        sendNotification(libro);
-
-
+        detallePresenter.autoPlay();
     }
     @Override public boolean onTouch(View vista, MotionEvent evento) {
         mediaController.show();
@@ -213,16 +214,27 @@ public class DetalleFragment extends Fragment
         mediaPlayer.seekTo(pos);
     }
     @Override public void start() {
-        mediaPlayer.start();
-        updateWidget(libro);
-        sendNotification(libro);
+        detallePresenter.play(libro);
     }
     @Override public int getAudioSessionId() {
         return 0;
     }
 
 
-    private void updateWidget(Libro libro){
+    @Override
+    public void play() {
+        mediaPlayer.start();
+    }
+
+    @Override
+    public void release() {
+        mediaPlayer.pause();
+        mediaPlayer.release();
+        isMediaPlayerReleased = true;
+    }
+
+    @Override
+    public void updateWidget(Libro libro){
 
         Activity context = getActivity();
 
@@ -263,7 +275,19 @@ public class DetalleFragment extends Fragment
                 remoteViews);
     }
 
-    private void clearWidget(){
+    @Override
+    public void showNotification(Libro libro) {
+        sendNotification(libro);
+    }
+
+    @Override
+    public void setBook(Libro libro, View view) {
+        this.libro = libro;
+        ponInfoLibro(libro, view);
+    }
+
+    @Override
+    public void clearWidget(){
         Activity context = getActivity();
 
         if(context == null) {
@@ -346,7 +370,8 @@ public class DetalleFragment extends Fragment
         notificationManager.notify(ID_NOTIFICACION, notificacion.build());
     }
 
-    private void clearNotification(){
+    @Override
+    public void clearNotification(){
         NotificationManager mNotificationManager =
                 (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.cancel(ID_NOTIFICACION);

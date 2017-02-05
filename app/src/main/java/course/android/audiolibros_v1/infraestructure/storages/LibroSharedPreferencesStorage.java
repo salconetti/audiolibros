@@ -1,4 +1,4 @@
-package course.android.audiolibros_v1.infraestructure;
+package course.android.audiolibros_v1.infraestructure.storages;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import java.util.List;
 
 import course.android.audiolibros_v1.Libro;
+import course.android.audiolibros_v1.adaptadores.LibrosSingleton;
 
 /**
  * Created by Casa on 28/01/2017.
@@ -13,9 +14,9 @@ import course.android.audiolibros_v1.Libro;
 
 public class LibroSharedPreferencesStorage implements LibroStorage{
 
-    public static final String PREF_AUDIOLIBROS =
+    private static final String PREF_AUDIOLIBROS =
             "course.android.audiolibros_internal";
-    public static final String KEY_ULTIMO_LIBRO = "ultimo";
+    private static final String KEY_ULTIMO_LIBRO = "ultimo";
     private final Context context;
 
     private static LibroSharedPreferencesStorage instance;
@@ -40,11 +41,16 @@ public class LibroSharedPreferencesStorage implements LibroStorage{
         return getPreference().getInt(KEY_ULTIMO_LIBRO, -1);
     }
 
-    public void setLastBook(int bookId){
+    public void saveLastBook(int bookId){
         SharedPreferences sharedPreferences = context.getSharedPreferences(PREF_AUDIOLIBROS, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putInt(KEY_ULTIMO_LIBRO, bookId);
         editor.commit();
+    }
+
+    @Override
+    public Libro getById(int id) {
+        return LibrosSingleton.getInstance().getBooks().get(id);
     }
 
     public static LibroStorage getInstance(Context context){

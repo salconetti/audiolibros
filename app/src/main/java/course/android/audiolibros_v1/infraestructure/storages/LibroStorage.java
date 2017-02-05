@@ -1,4 +1,4 @@
-package course.android.audiolibros_v1.infraestructure;
+package course.android.audiolibros_v1.infraestructure.storages;
 
 import java.util.List;
 import java.util.Vector;
@@ -13,5 +13,7 @@ public interface LibroStorage  {
     List<Libro> getAll();
     boolean hasLastBook();
     int getLastBook();
-    void setLastBook(int bookId);
+    void saveLastBook(int bookId);
+    Libro getById(int id);
+
 }

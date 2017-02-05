@@ -5,7 +5,6 @@ import android.content.Context;
 import java.util.List;
 
 import course.android.audiolibros_v1.Libro;
-import course.android.audiolibros_v1.infraestructure.LibroStorage;
 
 /**
  * Created by Casa on 05/02/2017.

@@ -26,12 +26,18 @@ import course.android.audiolibros_v1.adaptadores.LibrosSingleton;
 import course.android.audiolibros_v1.fragments.DetalleFragment;
 import course.android.audiolibros_v1.fragments.PreferenciasFragment;
 import course.android.audiolibros_v1.fragments.SelectorFragment;
-import course.android.audiolibros_v1.infraestructure.LibroSharedPreferencesStorage;
-import course.android.audiolibros_v1.infraestructure.LibroStorage;
+import course.android.audiolibros_v1.infraestructure.storages.LibroSharedPreferencesStorage;
+import course.android.audiolibros_v1.infraestructure.storages.LibroStorage;
+import course.android.audiolibros_v1.infraestructure.repositories.BooksRepository;
+import course.android.audiolibros_v1.presenters.DetallePresenter;
+import course.android.audiolibros_v1.presenters.MainPresenter;
+import course.android.audiolibros_v1.useCases.GetLastBook;
+import course.android.audiolibros_v1.useCases.HasLastBook;
+import course.android.audiolibros_v1.useCases.SaveLastBook;
 
 import static course.android.audiolibros_v1.widget.WidgetProvider.ACCION_REPRODUCTOR;
 
-public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
+public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, MainPresenter.View {
 
     private AdaptadorLibrosFiltro adaptador;
     private AppBarLayout appBarLayout;
@@ -39,12 +45,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private DrawerLayout drawer;
     private ActionBarDrawerToggle toggle;
     private AudioLibrosReceiver receiver;
-    private LibroStorage libroStorage;
+    private MainPresenter presenter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
+
+        LibroStorage libroStorage = LibroSharedPreferencesStorage.getInstance(getApplicationContext());
+        BooksRepository booksRepository = BooksRepository.create(libroStorage);
+        SaveLastBook saveLastBook = SaveLastBook.create(booksRepository);
+        HasLastBook hasLastBook = HasLastBook.create(booksRepository);
+        GetLastBook getLastBook = GetLastBook.create(booksRepository);
+        presenter = MainPresenter.create(saveLastBook, hasLastBook, getLastBook, this);
 
         adaptador = LibrosSingleton.getInstance().getBookAdapter(getApplicationContext());
 
@@ -66,7 +80,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                irUltimoVisitado();
+                presenter.clickFavoriteButton();
                 Snackbar.make(view, "Escuchando último libro", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
             }
@@ -122,8 +136,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         NavigationView navigationView = (NavigationView) findViewById(
                 R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
-
-        libroStorage = LibroSharedPreferencesStorage.getInstance(getApplicationContext());
     }
 
     @Override
@@ -154,14 +166,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return super.onOptionsItemSelected(item);
     }
 
-    public void irUltimoVisitado() {
-        if (libroStorage.hasLastBook()) {
-            mostrarDetalle(libroStorage.getLastBook());
-        } else {
-            Toast.makeText(this,"Sin última vista",Toast.LENGTH_LONG).show();
-        }
-    }
-
     public void mostrarPreferencias(){
         DetalleFragment detalleFragment = (DetalleFragment)
                 getFragmentManager().findFragmentById(R.id.detalle_fragment);
@@ -183,7 +187,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
+    public void irUltimoVisitado() {
+        presenter.clickFavoriteButton();
+    }
+
     public void mostrarDetalle(int bookPosition) {
+        presenter.openDetalle(bookPosition);
+    }
+
+    @Override
+    public void mostrarNoUltimaVisita() {
+        Toast.makeText(this, "Sin última vista",Toast.LENGTH_LONG).show();
+    }
+
+    @Override
+    public void showDetailFragment(int bookPosition) {
         DetalleFragment detalleFragment = (DetalleFragment)
                 getFragmentManager().findFragmentById(R.id.detalle_fragment);
         //Primer caso, Tableta. Segundo móvil
@@ -192,7 +210,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } else {
             detalleFragment = new DetalleFragment();
             Bundle args = new Bundle();
-            args.putInt(DetalleFragment.ARG_ID_LIBRO, bookPosition);
+            args.putInt(DetallePresenter.ARG_ID_LIBRO, bookPosition);
             detalleFragment.setArguments(args);
             FragmentTransaction transaction = getFragmentManager()
                     .beginTransaction();
@@ -203,7 +221,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             setDrawerState(false);
         }
 
-        libroStorage.setLastBook(bookPosition);
 
         IntentFilter filtro = new IntentFilter(ACCION_REPRODUCTOR);
 
