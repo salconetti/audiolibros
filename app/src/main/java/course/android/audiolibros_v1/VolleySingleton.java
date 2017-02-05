@@ -1,6 +1,6 @@
 package course.android.audiolibros_v1;
 
-import android.app.Application;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.util.LruCache;
 
@@ -8,24 +8,24 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.Volley;
 
-import java.util.Vector;
-
 /**
- * Created by Casa on 21/12/2016.
+ * Created by Casa on 05/02/2017.
  */
-
-public class Aplicacion extends Application {
-    private Vector<Libro> vectorLibros;
-    private AdaptadorLibrosFiltro adaptador;
+public class VolleySingleton {
     private static RequestQueue colaPeticiones;
     private static ImageLoader lectorImagenes;
 
-    @Override
-    public void onCreate() {
-        vectorLibros = Libro.ejemploLibros();
-        adaptador = new AdaptadorLibrosFiltro(this, vectorLibros);
+    private static VolleySingleton ourInstance;
 
-        colaPeticiones = Volley.newRequestQueue(this);
+    public static VolleySingleton getInstance(Context context) {
+        if(ourInstance == null){
+            ourInstance = new VolleySingleton(context);
+        }
+        return ourInstance;
+    }
+
+    private VolleySingleton(Context context) {
+        colaPeticiones = Volley.newRequestQueue(context);
         lectorImagenes = new ImageLoader(colaPeticiones,
                 new ImageLoader.ImageCache() {
                     private final LruCache<String, Bitmap> cache =
@@ -39,18 +39,11 @@ public class Aplicacion extends Application {
                 });
     }
 
-    public AdaptadorLibrosFiltro getAdaptador() {
-        return adaptador;
-    }
-    public Vector<Libro> getVectorLibros() {
-        return vectorLibros;
-    }
-
-    public static RequestQueue getColaPeticiones() {
+    public RequestQueue getColaPeticiones() {
         return colaPeticiones;
     }
 
-    public static ImageLoader getLectorImagenes() {
+    public ImageLoader getLectorImagenes() {
         return lectorImagenes;
     }
 }

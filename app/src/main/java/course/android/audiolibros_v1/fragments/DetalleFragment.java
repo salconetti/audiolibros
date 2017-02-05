@@ -32,10 +32,11 @@ import com.android.volley.toolbox.NetworkImageView;
 
 import java.io.IOException;
 
-import course.android.audiolibros_v1.Aplicacion;
 import course.android.audiolibros_v1.Libro;
 import course.android.audiolibros_v1.MainActivity;
 import course.android.audiolibros_v1.R;
+import course.android.audiolibros_v1.VolleySingleton;
+import course.android.audiolibros_v1.adaptadores.LibrosSingleton;
 import course.android.audiolibros_v1.components.OnSeekBarListener;
 import course.android.audiolibros_v1.components.ZoomSeekBar;
 import course.android.audiolibros_v1.widget.WidgetProvider;
@@ -120,14 +121,12 @@ public class DetalleFragment extends Fragment
 
     private void ponInfoLibro(int id, View vista) {
 
-        this.libro = ((Aplicacion) getActivity().getApplication())
-                .getVectorLibros().elementAt(id);
+        this.libro = LibrosSingleton.getInstance().getBooks().get(id);
 
         ((TextView) vista.findViewById(R.id.titulo)).setText(libro.titulo);
         ((TextView) vista.findViewById(R.id.autor)).setText(libro.autor);
-        Aplicacion aplicacion = (Aplicacion) getActivity().getApplication();
         ((NetworkImageView) vista.findViewById(R.id.portada)).setImageUrl(
-                libro.urlImagen, aplicacion.getLectorImagenes());
+                libro.urlImagen, VolleySingleton.getInstance(getActivity().getApplicationContext()).getLectorImagenes());
         vista.setOnTouchListener(this);
         if (mediaPlayer != null) {
             mediaPlayer.release();
@@ -245,8 +244,7 @@ public class DetalleFragment extends Fragment
             remoteViews.setImageViewResource(R.id.play_widget, R.drawable.pause);
         }
 
-        Aplicacion aplicacion = (Aplicacion) getActivity().getApplication();
-        ImageLoader imageLoader = aplicacion.getLectorImagenes();
+        ImageLoader imageLoader = VolleySingleton.getInstance(getActivity().getApplicationContext()).getLectorImagenes();
         final Bitmap[] portada = new Bitmap[1];
         imageLoader.get(libro.urlImagen, new ImageLoader.ImageListener() {
             @Override
@@ -295,10 +293,8 @@ public class DetalleFragment extends Fragment
             return;
         }
 
-        Aplicacion aplicacion = (Aplicacion) context.getApplication();
-
         final Bitmap[] portada = new Bitmap[1];
-        ImageLoader imageLoader = aplicacion.getLectorImagenes();
+        ImageLoader imageLoader = VolleySingleton.getInstance(getActivity().getApplicationContext()).getLectorImagenes();
         imageLoader.get(libro.urlImagen, new ImageLoader.ImageListener() {
             @Override
             public void onResponse(ImageLoader.ImageContainer response, boolean isImmediate) {
@@ -351,9 +347,8 @@ public class DetalleFragment extends Fragment
     }
 
     private void clearNotification(){
-        Activity context = getActivity();
-        Aplicacion aplicacion = (Aplicacion) context.getApplication();
-        NotificationManager mNotificationManager = (NotificationManager) aplicacion.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager mNotificationManager =
+                (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.cancel(ID_NOTIFICACION);
     }
 

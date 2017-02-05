@@ -4,7 +4,6 @@ import android.app.AlertDialog;
 import android.app.FragmentTransaction;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
@@ -16,19 +15,19 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import course.android.audiolibros_v1.adaptadores.AdaptadorLibrosFiltro;
+import course.android.audiolibros_v1.adaptadores.LibrosSingleton;
 import course.android.audiolibros_v1.fragments.DetalleFragment;
 import course.android.audiolibros_v1.fragments.PreferenciasFragment;
 import course.android.audiolibros_v1.fragments.SelectorFragment;
+import course.android.audiolibros_v1.infraestructure.LibroSharedPreferencesStorage;
+import course.android.audiolibros_v1.infraestructure.LibroStorage;
 
 import static course.android.audiolibros_v1.widget.WidgetProvider.ACCION_REPRODUCTOR;
 
@@ -40,13 +39,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private DrawerLayout drawer;
     private ActionBarDrawerToggle toggle;
     private AudioLibrosReceiver receiver;
+    private LibroStorage libroStorage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        adaptador = ((Aplicacion)getApplicationContext()).getAdaptador();
+        adaptador = LibrosSingleton.getInstance().getBookAdapter(getApplicationContext());
 
         appBarLayout = (AppBarLayout) findViewById(R.id.appBarLayout);
 
@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-
+        libroStorage = LibroSharedPreferencesStorage.getInstance(getApplicationContext());
     }
 
     @Override
@@ -155,11 +155,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     public void irUltimoVisitado() {
-        SharedPreferences pref = getSharedPreferences(
-                "course.android.audiolibros_v1_internal", MODE_PRIVATE);
-        int id = pref.getInt("ultimo", -1);
-        if (id >= 0) {
-            mostrarDetalle(id);
+        if (libroStorage.hasLastBook()) {
+            mostrarDetalle(libroStorage.getLastBook());
         } else {
             Toast.makeText(this,"Sin última vista",Toast.LENGTH_LONG).show();
         }
@@ -186,16 +183,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
-    public void mostrarDetalle(int id) {
+    public void mostrarDetalle(int bookPosition) {
         DetalleFragment detalleFragment = (DetalleFragment)
                 getFragmentManager().findFragmentById(R.id.detalle_fragment);
         //Primer caso, Tableta. Segundo móvil
         if (detalleFragment != null) {
-            detalleFragment.ponInfoLibro(id);
+            detalleFragment.ponInfoLibro(bookPosition);
         } else {
             detalleFragment = new DetalleFragment();
             Bundle args = new Bundle();
-            args.putInt(DetalleFragment.ARG_ID_LIBRO, id);
+            args.putInt(DetalleFragment.ARG_ID_LIBRO, bookPosition);
             detalleFragment.setArguments(args);
             FragmentTransaction transaction = getFragmentManager()
                     .beginTransaction();
@@ -205,12 +202,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             setDrawerState(false);
         }
-        SharedPreferences pref = getSharedPreferences(
-                "course.android.audiolibros_v1_internal", MODE_PRIVATE);
 
-        SharedPreferences.Editor editor = pref.edit();
-        editor.putInt("ultimo", id);
-        editor.commit();
+        libroStorage.setLastBook(bookPosition);
 
         IntentFilter filtro = new IntentFilter(ACCION_REPRODUCTOR);
 

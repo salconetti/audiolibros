@@ -9,7 +9,8 @@ import course.android.audiolibros_v1.fragments.DetalleFragment;
 public class AudioLibrosReceiver extends BroadcastReceiver {
     private DetalleFragment detalleFragment;
 
-    public AudioLibrosReceiver(){}
+    public AudioLibrosReceiver() {
+    }
 
     public AudioLibrosReceiver(DetalleFragment detalleFragment) {
         this.detalleFragment = detalleFragment;

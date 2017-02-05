@@ -1,4 +1,4 @@
-package course.android.audiolibros_v1;
+package course.android.audiolibros_v1.adaptadores;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -13,7 +13,16 @@ import android.widget.TextView;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.ImageLoader;
 
+import java.util.List;
 import java.util.Vector;
+
+import course.android.audiolibros_v1.Libro;
+import course.android.audiolibros_v1.R;
+import course.android.audiolibros_v1.VolleySingleton;
+import course.android.audiolibros_v1.commands.ClickAction;
+import course.android.audiolibros_v1.commands.EmptyClickAction;
+import course.android.audiolibros_v1.commands.EmptyLongClickAction;
+import course.android.audiolibros_v1.commands.LongClickAction;
 
 /**
  * Created by Casa on 26/12/2016.
@@ -22,21 +31,19 @@ import java.util.Vector;
 public class AdaptadorLibros extends RecyclerView.Adapter<AdaptadorLibros.ViewHolder> {
 
     private LayoutInflater inflador; //Crea Layouts a partir del XML
-    protected Vector<Libro> vectorLibros; //Vector con libros a visualizar
+    private List<Libro> vectorLibros = new Vector<Libro>(); //Vector con libros a visualizar
     private Context contexto;
-    private View.OnClickListener onClickListener;
-    private View.OnLongClickListener onLongClickListener;
 
-    public AdaptadorLibros(Context contexto, Vector<Libro> vectorLibros) {
-        inflador = (LayoutInflater) contexto
+    private ClickAction clickAction = new EmptyClickAction();
+    private LongClickAction longClickAction = new EmptyLongClickAction();
+
+    protected AdaptadorLibros(Context context) {
+        this.contexto = context;
+        inflador = (LayoutInflater) context
                 .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        this.vectorLibros = vectorLibros;
-        this.contexto = contexto;
+        this.vectorLibros = LibrosSingleton.getInstance().getBooks();
     }
 
-    public void setOnClickListener(View.OnClickListener onClickListener){
-        this.onClickListener = onClickListener;
-    }
     //Creamos nuestro ViewHolder, con los tipos de elementos a modificar
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public ImageView portada;
@@ -54,19 +61,17 @@ public class AdaptadorLibros extends RecyclerView.Adapter<AdaptadorLibros.ViewHo
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 // Inflamos la vista desde el xml
         View view = inflador.inflate(R.layout.elemento_selector, null);
-        view.setOnClickListener(onClickListener);
-        view.setOnLongClickListener(onLongClickListener);
         return new ViewHolder(view);
     }
     // Usando como base el ViewHolder y lo personalizamos
     @Override
-    public void onBindViewHolder(final ViewHolder holder, int posicion) {
-        final Libro libro = vectorLibros.elementAt(posicion);
+    public void onBindViewHolder(final ViewHolder holder, final int posicion) {
+        final Libro libro = vectorLibros.get(posicion);
         holder.titulo.setText(libro.titulo);
         holder.itemView.setScaleX(1);
         holder.itemView.setScaleY(1);
-        Aplicacion aplicacion = (Aplicacion) contexto.getApplicationContext();
-        aplicacion.getLectorImagenes().get(libro.urlImagen,
+
+        VolleySingleton.getInstance(contexto).getLectorImagenes().get(libro.urlImagen,
                 new ImageLoader.ImageListener() {
                     @Override public void onResponse(ImageLoader.ImageContainer
                                                              response, boolean isImmediate) {
@@ -94,6 +99,23 @@ public class AdaptadorLibros extends RecyclerView.Adapter<AdaptadorLibros.ViewHo
                         holder.portada.setImageResource(R.drawable.books);
                     }
                 });
+
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                clickAction.execute(posicion);
+            }
+        });
+
+        holder.itemView.setOnLongClickListener(new View.OnLongClickListener(){
+
+            @Override
+            public boolean onLongClick(View view) {
+
+                longClickAction.execute(view, posicion);
+                return true;
+            }
+        });
     }
 
     // Indicamos el número de elementos de la lista
@@ -101,8 +123,15 @@ public class AdaptadorLibros extends RecyclerView.Adapter<AdaptadorLibros.ViewHo
         return vectorLibros.size();
     }
 
-    public void setOnLongClickListener(View.OnLongClickListener onLongClickListener){
-        this.onLongClickListener = onLongClickListener;
+    public void setClickAction(ClickAction clickAction){
+        this.clickAction = clickAction;
     }
 
+    public void setLongClickAction(LongClickAction longClickAction) {
+        this.longClickAction = longClickAction;
+    }
+
+    protected List<Libro> getLibros(){
+        return this.vectorLibros;
+    }
 }
